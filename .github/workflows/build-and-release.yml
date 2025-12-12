@@ -1,0 +1,231 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PACKAGE_NAME: systemd-unit-monitor
+
+jobs:
+  build:
+    name: Build wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            platform: linux
+          - os: ubuntu-latest
+            arch: aarch64
+            platform: linux
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up QEMU for cross-compilation
+      if: matrix.arch == 'aarch64'
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+
+    - name: Install system dependencies (x86_64)
+      if: matrix.arch == 'x86_64'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          dbus \
+          libdbus-1-dev \
+          libgirepository1.0-dev \
+          python3-gi-dev \
+          pkg-config
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Build wheels (x86_64)
+      if: matrix.arch == 'x86_64'
+      run: |
+        uv build --wheel
+        ls -la dist/
+
+    - name: Build wheels (aarch64)
+      if: matrix.arch == 'aarch64'
+      uses: uraimo/run-on-arch-action@v2
+      with:
+        arch: aarch64
+        distro: ubuntu22.04
+        githubToken: ${{ github.token }}
+        dockerRunArgs: |
+          --volume "${PWD}:/workspace"
+        install: |
+          apt-get update
+          apt-get install -y \
+            python3 \
+            python3-pip \
+            python3-venv \
+            dbus \
+            libdbus-1-dev \
+            libgirepository1.0-dev \
+            python3-gi-dev \
+            pkg-config \
+            curl \
+            git
+          # Install uv
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.cargo/bin:$PATH"
+        run: |
+          cd /workspace
+          export PATH="$HOME/.cargo/bin:$PATH"
+          uv build --wheel
+          ls -la dist/
+
+    - name: Rename wheel for architecture
+      run: |
+        cd dist
+        for wheel in *.whl; do
+          if [[ "$wheel" == *"any"* ]]; then
+            # Replace 'any' with the specific architecture
+            new_wheel=$(echo "$wheel" | sed "s/any/${{ matrix.platform }}_${{ matrix.arch }}/")
+            mv "$wheel" "$new_wheel"
+            echo "Renamed $wheel to $new_wheel"
+          fi
+        done
+        ls -la
+
+    - name: Upload wheel artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheel-${{ matrix.platform }}-${{ matrix.arch }}
+        path: dist/*.whl
+        retention-days: 7
+
+  test:
+    name: Test installation
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all wheel artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: wheel-*
+        merge-multiple: true
+        path: dist/
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          dbus \
+          libdbus-1-dev \
+          libgirepository1.0-dev \
+          python3-gi-dev
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Test wheel installation
+      run: |
+        ls -la dist/
+        # Install the x86_64 wheel for testing
+        python -m pip install dist/*linux_x86_64*.whl
+        systemd-unit-monitor --help
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all wheel artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: wheel-*
+        merge-multiple: true
+        path: dist/
+
+    - name: List built artifacts
+      run: |
+        echo "Built artifacts:"
+        ls -la dist/
+
+    - name: Extract version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        cat << EOF > release_notes.md
+        # Release ${{ steps.version.outputs.VERSION }}
+
+        ## What's New
+        - SystemD Unit Monitor wheel packages for multiple architectures
+        - Monitors systemd user units via D-Bus
+        - Sends metrics to Telegraf in InfluxDB line protocol format
+
+        ## Supported Architectures
+        - Linux x86_64 (amd64)
+        - Linux aarch64 (arm64)
+
+        ## Installation
+        Download the appropriate wheel for your architecture and install with:
+        \`\`\`bash
+        pip install systemd_unit_monitor-*-py3-none-linux_*.whl
+        \`\`\`
+
+        ## System Requirements
+        - Python 3.13+
+        - D-Bus and systemd user session
+        - System packages: dbus-1-dev, libgirepository1.0-dev, python3-gi-dev
+
+        See README.md for complete installation and usage instructions.
+        EOF
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.version.outputs.VERSION }}
+        name: Release ${{ steps.version.outputs.VERSION }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+        files: |
+          dist/*.whl
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [build, test, release]
+    if: always()
+    steps:
+    - name: Delete artifacts
+      uses: geekyeggo/delete-artifact@v5
+      with:
+        name: wheel-*

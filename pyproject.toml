@@ -1,0 +1,93 @@
+[project]
+name = "systemd-unit-monitor"
+version = "0.1.0"
+description = "Monitor systemd user units and send metrics to Telegraf"
+readme = "README.md"
+requires-python = ">=3.13"
+classifiers = ["Private :: Do Not Upload"]
+license = "LicenseRef-proprietary"
+license-files = ["LICENSE.txt"]
+
+dependencies = [
+    "dbus-python>=1.2.18",
+    "PyGObject>=3.40.0",
+]
+
+[project.optional-dependencies]
+tests = ["pytest", "pytest-ruff"]
+dev = [
+    "ruff",
+    "pyright",
+]
+
+[project.scripts]
+systemd-unit-monitor = "systemd_unit_monitor:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "systemd_unit_monitor.py",
+    "config.ini",
+    "README.md",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --ruff"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+fix = true
+extend-exclude = [
+    "*.egg-info",
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "SIM",
+    "C4",
+    "N",
+    "Q",
+    "RUF",
+    "PT",
+    "ANN",
+    "D",
+]
+ignore = [
+    "D100",
+    "D104",
+    "D107",
+    "D203",
+    "D213",   # docstring relaxations
+    "COM812",
+    "ISC001", # formatter conflicts
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/test_*.py" = ["S101", "ANN", "ARG", "PLR2004", "D"]
+"**/*_test.py" = ["S101", "ANN", "ARG", "PLR2004", "D"]
+
+[tool.ruff.format]
+preview = true
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
