@@ -2,6 +2,19 @@
 
 A Python application that monitors systemd user units via D-Bus and sends comprehensive metrics to Telegraf in InfluxDB line protocol format.
 
+## Quick Start
+
+```bash
+# Install system dependencies first (see "System Requirements" below)
+# then:
+#
+# Create a virtual environment + install dependencies (recommended)
+uv sync --extra dev --extra tests
+
+# Run
+uv run systemd-unit-monitor -c config.ini
+```
+
 ## Features
 
 - **Real-time monitoring** of systemd user units via D-Bus
@@ -20,10 +33,7 @@ A Python application that monitors systemd user units via D-Bus and sends compre
 ### From Source
 
 ```bash
-# Install dependencies
-uv sync --extra dev --extra tests
-
-# Or install in development mode
+# Install in development mode
 uv pip install -e .
 ```
 
@@ -31,10 +41,19 @@ uv pip install -e .
 
 ```bash
 # Build distributable wheel
-uv build
+uv build --wheel
 
 # Install from wheel
 pip install dist/systemd_unit_monitor-*.whl
+```
+
+### Install from a Release Wheel
+
+If you have a wheel from CI/releases, install it with:
+
+```bash
+pip install systemd_unit_monitor-*-py3-none-*.whl
+systemd-unit-monitor --help
 ```
 
 ## Usage
@@ -148,10 +167,6 @@ sudo dnf install dbus-devel gobject-introspection-devel python3-gobject-devel
 ### Setup Development Environment
 
 ```bash
-# Clone repository
-git clone <repo-url>
-cd systemd-unit-monitor
-
 # Install with development dependencies
 uv sync --extra dev --extra tests
 
@@ -167,6 +182,9 @@ uv run pyright systemd_unit_monitor.py
 
 ```bash
 uv run pytest
+
+# With coverage (matches CI)
+uv run pytest tests/ --cov=systemd_unit_monitor --cov-report=term-missing
 ```
 
 ## Troubleshooting
@@ -188,4 +206,4 @@ systemd-unit-monitor -v -c config.ini
 
 ## License
 
-Proprietary - Do not upload to public repositories.
+MIT License. See `LICENSE.txt`.

@@ -4,8 +4,10 @@ version = "0.1.0"
 description = "Monitor systemd user units and send metrics to Telegraf"
 readme = "README.md"
 requires-python = ">=3.13"
-classifiers = ["Private :: Do Not Upload"]
-license = "LicenseRef-proprietary"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+]
+license = "MIT"
 license-files = ["LICENSE.txt"]
 
 dependencies = [
