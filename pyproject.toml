@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-tests = ["pytest", "pytest-ruff"]
+tests = ["pytest>=7.0.0", "pytest-ruff", "pytest-cov>=4.0.0", "pytest-mock>=3.10.0"]
 dev = [
     "ruff",
     "pyright",
@@ -27,15 +27,13 @@ systemd-unit-monitor = "systemd_unit_monitor:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build]
-include = [
+[tool.hatch.build.targets.wheel]
+only-include = [
     "systemd_unit_monitor.py",
     "config.ini",
     "README.md",
+    "LICENSE.txt",
 ]
-
-[tool.hatch.build.targets.wheel]
-packages = ["."]
 
 [tool.pytest.ini_options]
 addopts = "--doctest-modules --ruff"

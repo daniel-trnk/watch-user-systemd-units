@@ -1,0 +1,10 @@
+Proprietary License
+
+Copyright (c) the project authors.
+
+All rights reserved. This software and associated documentation files are proprietary and
+confidential. No part of this software may be copied, modified, published, distributed,
+or sublicensed without explicit prior written permission from the copyright holder.
+
+This software is provided "AS IS", without warranty of any kind, express or implied.
+
