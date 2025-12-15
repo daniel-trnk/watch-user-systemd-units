@@ -2,18 +2,31 @@
 """SystemD User Unit Monitor.
 
 Monitors systemd user units via D-Bus and sends metrics to Telegraf.
+
+License: MIT
+Copyright: 2025 Terank Technologies AG
+
+Usage:
+    systemd-unit-monitor [-c CONFIG] [-v]
+
+Options:
+    -c CONFIG, --config CONFIG  Configuration file path
+    -v, --verbose               Enable verbose logging
+
+Example:
+    systemd-unit-monitor -c config.ini -v
+    
 """
 
 import argparse
 import configparser
 import contextlib
+import getpass
 import logging
 import os
 import socket
 import sys
 import time
-import getpass
-import pwd
 from dataclasses import dataclass
 
 import dbus
